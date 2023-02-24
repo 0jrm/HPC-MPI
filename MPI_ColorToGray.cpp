@@ -4,6 +4,8 @@
 #include <iostream> // cout
 #include "mpi.h"    // MPI header file
 
+using namespace std;
+
 int main(int argc, char **argv)
 {
     int my_rank;   // process ID
@@ -28,12 +30,23 @@ int main(int argc, char **argv)
     MPI_Bcast(&height, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
 
     // calculate the number of rows per process, and the starting row and ending row for each process
-    int rows_per_process = height / num_procs;
-    int residual_rows = height % num_procs;
+    int master_rows = height / 10;
 
-    int my_start_row = my_rank * rows_per_process + std::min(my_rank, residual_rows);
-    int my_end_row = my_start_row + rows_per_process + (my_rank < residual_rows ? 1 : 0);
+    int rows_per_slave = height / (num_procs - 1);
+    int residual_rows = height % (num_procs - 1);
+
+    int my_start_row = my_rank * rows_per_slave + std::min(my_rank, residual_rows);
+
+    int my_end_row;
+
+    if (my_rank == 0)
+        my_end_row = my_start_row + master_rows;
+    else
+        my_end_row = my_start_row + rows_per_slave + (my_rank < residual_rows ? 1 : 0);
+
     int my_rows = my_end_row - my_start_row;
+
+    cout << my_rows << '\t' << my_start_row << '\t' << my_end_row << endl;
 
     // allocate memory for the local buffer
     BYTE *local_buf = new BYTE[my_rows * width * 3];
@@ -60,6 +73,19 @@ int main(int argc, char **argv)
             *pRed = (BYTE)lum;
             *pGrn = (BYTE)lum;
             *pBlu = (BYTE)lum;
+        }
+
+        if (row == my_rows -1)
+        {
+            if (my_rank == 0)
+            {
+                // wait for confirmation from slaves
+            }
+            else
+            {
+                // send confirmation for master
+            }
+            
         }
     }
 
